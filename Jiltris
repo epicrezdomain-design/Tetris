@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jiltris : Don't stop till your fully Jilled</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <!-- Load Tone.js for synthetic audio generation --><script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js"></script>
     <style>
         /* Custom Arcade Styling */
         body {
@@ -167,15 +166,15 @@
 <body>
 
     <div class="game-container">
-        <!-- Game Canvas --><canvas id="tetris-canvas"></canvas>
+        <canvas id="tetris-canvas"></canvas>
 
-        <!-- Side Panel --><div class="side-panel">
+        <div class="side-panel">
             <div class="info-box">
                 <h3>SCORE</h3>
                 <div id="score" class="score-value">0</div>
             </div>
             
-            <!-- PIECE COUNTER --><div class="info-box" style="background: #e74c3c; box-shadow: 0 4px #c0392b;">
+            <div class="info-box" style="background: #e74c3c; box-shadow: 0 4px #c0392b;">
                 <h3>PIECES</h3>
                 <div id="piece-count" class="score-value">0</div>
             </div>
@@ -198,7 +197,7 @@
             </div>
         </div>
 
-        <!-- Start/Game Over/Pause Overlay --><div id="game-overlay" class="message-overlay">
+        <div id="game-overlay" class="message-overlay">
             <h2 id="overlay-title">JILTRIS</h2>
             <p id="overlay-message">PRESS START</p>
             <button id="start-restart-button" class="overlay-button">Start Game</button>
@@ -272,95 +271,43 @@
         let dropInterval = 1000; 
         let lastTime = 0;
 
-        // --- Music/Audio Setup (Tone.js) ---
+        // 🎶 --- Music/Audio Setup (Using HTML Audio) --- 🎶
         let musicActive = false;
-        let tetrisMusic = null;
-        let synth = null;
-
-        // Notes for the classic Tetris A-Theme (Korobeiniki) - Simplified for the fixed rhythm loop
-        const melody = [
-            "E5", "B4", "C5", "D5", "C5", "B4", "A4", "A4", 
-            "C5", "E5", "D5", "C5", "B4", "B4", "C5", "D5", 
-            "E5", "C5", "A4", "A4", "A4", "B4", "C5", "D5",
-            "E5", "C5", "A4", "A4", "A4", "A4", "G4", "F4",
-            "E5", "B4", "C5", "D5", "C5", "B4", "A4", "A4", 
-            "C5", "E5", "D5", "C5", "B4", "B4", "C5", "D5", 
-            "E5", "C5", "A4", "A4", "A4", "B4", "C5", "D5",
-            "E5", "C5", "A4", "A4", "A4", "A4", "G4", "F4",
-        ];
+        // Use the RAW link for the MP3 on GitHub
+        const musicSrc = 'https://raw.githubusercontent.com/epicrezdomain-design/Tetris/main/Tetrismusic.mp3';
+        const tetrisMusic = new Audio(musicSrc);
+        tetrisMusic.loop = true; // Make it loop indefinitely
 
         function setupMusic() {
-            // NOTE ON EXTERNAL MP3: Loading external media files (like the one you linked) is 
-            // often blocked in this secure sandbox environment. We use Tone.js to generate 
-            // a synthetic chiptune melody instead, which is reliable here.
-            
-            // 1. Initialize Tone (required for user interaction)
-            if (Tone.context.state !== 'running') {
-                Tone.start();
-            }
-
-            // 2. Create a MonoSynth for a classic chiptune sound
-            if (!synth) {
-                synth = new Tone.MonoSynth({
-                    oscillator: { type: "square" }, // Use square wave for chiptune
-                    envelope: {
-                        attack: 0.005,
-                        decay: 0.1,
-                        sustain: 0.1, // Reduced sustain
-                        release: 0.1
-                    },
-                    filter: {
-                        Q: 6,
-                        type: "lowpass",
-                        frequency: 800
-                    },
-                    filterEnvelope: {
-                        attack: 0.01,
-                        decay: 0.01,
-                        sustain: 0.5,
-                        release: 0.5,
-                        baseFrequency: 200,
-                        octaves: 7,
-                        exponent: 2
-                    }
-                }).toDestination();
-                
-                // Set a faster, more classic Tetris tempo (140 BPM)
-                Tone.Transport.bpm.value = 140; 
-            }
-
-            // 3. Create a looped sequence
-            if (!tetrisMusic) {
-                let noteIndex = 0;
-                // Loop every eighth note ("8n")
-                tetrisMusic = new Tone.Loop(time => {
-                    if (!isPaused && isPlaying) {
-                        const note = melody[noteIndex % melody.length];
-                        // Trigger the note with a short duration to match the staccato 8-bit feel
-                        synth.triggerAttackRelease(note, "16n", time); 
-                        noteIndex++;
-                    }
-                }, "8n").start(0);
-            }
+            // Note: Since we are using the simple Audio() constructor, there's no complex setup like Tone.start()
+            // The audio will only actually play when a user action (like clicking the button) triggers it.
         }
 
         function toggleMusic() {
-            if (!tetrisMusic) {
-                setupMusic();
-            }
+            // No need for setupMusic() call since the Audio object is created immediately.
             
             if (musicActive) {
                 // Stop music
-                Tone.Transport.stop();
+                tetrisMusic.pause();
                 musicActive = false;
                 musicToggleButton.textContent = "Music: OFF";
             } else {
-                // Start music
-                Tone.Transport.start();
-                musicActive = true;
-                musicToggleButton.textContent = "Music: ON";
+                // Start music - wrap in a promise-based play() for safety
+                tetrisMusic.play().then(() => {
+                    // Playback started successfully
+                    musicActive = true;
+                    musicToggleButton.textContent = "Music: ON";
+                }).catch(error => {
+                    // Log error if playback fails (e.g., due to browser autoplay policy)
+                    console.error("Music playback failed:", error);
+                    alert("Music could not start. Browser security often requires a user interaction to play media.");
+                    musicToggleButton.textContent = "Music: ERROR"; // Update button to reflect error
+                });
             }
         }
+        
+        // The original code had setupMusic() and toggleMusic() which are now modified.
+        // The rest of the functions related to Tone.js (synth, melody, Tone.Loop) are REMOVED.
         
         // --- Helper Functions ---
 
@@ -473,9 +420,9 @@
             startRestartButton.classList.add('overlay-button');
             overlay.style.display = 'flex';
             
-            // Stop music when game is over
+            // Pause music when game is over
             if (musicActive) {
-                Tone.Transport.pause();
+                tetrisMusic.pause(); // 🎶 Changed from Tone.Transport.pause()
             }
         }
 
@@ -652,14 +599,14 @@
                 startRestartButton.textContent = 'Restart Game';
                 overlay.style.display = 'flex';
                 if (musicActive) {
-                    Tone.Transport.pause();
+                    tetrisMusic.pause(); // 🎶 Changed from Tone.Transport.pause()
                 }
             } else {
                 overlay.style.display = 'none';
                 lastTime = performance.now();
                 requestAnimationFrame(update);
                 if (musicActive) {
-                    Tone.Transport.start();
+                    tetrisMusic.play(); // 🎶 Changed from Tone.Transport.start()
                 }
             }
         }
@@ -692,7 +639,7 @@
             overlay.style.display = 'none';
             // Resume music if it was active before game over/pause
             if (musicActive) {
-                Tone.Transport.start();
+                tetrisMusic.play(); // 🎶 Changed from Tone.Transport.start()
             }
             update(); // Start the game loop
         }
